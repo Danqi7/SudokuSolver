@@ -699,11 +699,11 @@ if __name__ == '__main__':
     #    print "YAY AGAIN!"
     #sb2.print_board()
     #fb2 = solve(sb2,False,True,False,False)
-    fb2 = solve(sb2,False,True,False,False)
-    if is_complete(fb2) == True:
-        print "YAY!"
+    # fb2 = solve(sb2,False,True,False,False)
+    # if is_complete(fb2) == True:
+    #     print "YAY!"
     #sb3.print_board()
-    #fb3 = solve(sb3,True,False,True,False)
-    #fb3 = solve(sb3,False,False,True,False)
-    # if is_complete(fb3) == True:
-    #  print "YAY!"
+    #sfb3 = solve(sb3,True,False,True,False)
+    fb3 = solve(sb3,True,False,False,True)
+    if is_complete(fb3) == True:
+     print "YAY!"
