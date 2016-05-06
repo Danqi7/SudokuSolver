@@ -259,13 +259,14 @@ def degree_checking(initial_board, empty, visited, rowmap, colmap, sqrmap):
     visited[maxIndex] = 0
     return False
 
-def LCV_checking(initial_board, empty, rowmap, colmap, sqrmap, index):
+def LCV_checking(initial_board, empty, visited, rowmap, colmap, sqrmap, index):
     """LCV_check recursively searches the right value to fill the board
     and return True if a solution is found otherwise return False"""
 
-    if index == len(empty) - 1:
+    if index == len(empty):
         return True
 
+    size = initial_board.BoardSize
     currentCell = empty[index]
     row = currentCell[0]
     col = currentCell[1]
@@ -274,58 +275,143 @@ def LCV_checking(initial_board, empty, rowmap, colmap, sqrmap, index):
     SquareRow = row // subsquare
     SquareCol = col // subsquare
 
-    evaluation = -1
-    bestValue = 0
-    for num in range(1,size+1):
-        if rowmap[row][num-1] == 0 and colmap[col][num-1] == 0 and sqrmap[SquareRow*subsquare+SquareCol][num-1] == 0:
-            for j in range(size):
-                if rowmap[row][j] == 1:
-                    temp = temp + 1
-                if colmap[col][j] == 1:
-                    temp = temp + 1
-                if sqrmap[SquareRow*subsquare+SquareCol][j] == 1:
-                    temp = temp + 1
-            if temp > evaluation:
-                evaluation = temp
-                bestValue = i
 
-    for num in range(1,initial_board.BoardSize+1):
-        #if num doesn't exit in its row, col nor square
-        if rowmap[row][num-1] == 0 and colmap[col][num-1] == 0 and sqrmap[SquareRow*subsquare+SquareCol][num-1] == 0:
-            initial_board.set_value(row, col, num)
-            #mark the map
-            rowmap[row][num-1] = 1
-            colmap[col][num-1] = 1
-            sqrmap[SquareRow*subsquare+SquareCol][num-1] = 1
+    used_value = [0]*size
+    for j in range(size):
+        if rowmap[row][j] == 1:
+            used_value[j] = 1
+        if colmap[col][j] == 1:
+            used_value[j] = 1
+        if sqrmap[SquareRow*subsquare+SquareCol][j] == 1:
+            used_value[j] = 1
 
-            #success
-            if forward_check(initial_board, empty, rowmap, colmap, sqrmap, index+1) == True:
-                return True
-            else:
-                #fail -> unmark the map
-                #initial_board.set_value(row, col, 0)
-                rowmap[row][num-1] = 0
-                colmap[col][num-1] = 0
-                sqrmap[SquareRow*subsquare+SquareCol][num-1] = 0
+
+    visited[index] = 1
+    while sum(used_value) != size:
+        minSum = 1000
+        temp_sum = 0
+        bestValue = 1
+        for num in range(1,initial_board.BoardSize+1):
+            if rowmap[row][num-1] == 0 and colmap[col][num-1] == 0 and sqrmap[SquareRow*subsquare+SquareCol][num-1] == 0:
+                #haven't tried this value yet
+                if used_value[num-1] == 0:
+                    #compute its impact on other unassigned
+                    for i in range(len(empty)):
+                        if visited[i] == 0:
+                            temprow = empty[i][0]
+                            tempcol = empty[i][1]
+                            temprowsub = temprow // subsquare
+                            tempcolsub = tempcol // subsquare
+                            if temprow == row:
+                                if colmap[tempcol][num-1] == 0:
+                                    temp_sum = temp_sum + 1
+                                if sqrmap[temprowsub*subsquare+tempcolsub][num-1] == 0:
+                                    temp_sum = temp_sum + 1
+                            if tempcol == col:
+                                if rowmap[temprow][num-1] == 0:
+                                    temp_sum = temp_sum + 1
+                                if sqrmap[temprowsub*subsquare+tempcolsub][num-1] == 0:
+                                    temp_sum = temp_sum + 1
+                            if temprowsub*subsquare+tempcolsub == SquareRow*subsquare+SquareCol:
+                                if colmap[tempcol][num-1] == 0:
+                                    temp_sum = temp_sum + 1
+                                if rowmap[temprow][num-1] == 0:
+                                    temp_sum = temp_sum + 1
+                    if temp_sum < minSum:
+                        minSum = temp_sum
+                        bestValue = num
+
+        #first try the best value
+        initial_board.set_value(row, col, bestValue)
+        used_value[bestValue-1] = 1
+        #mark the map
+        rowmap[row][bestValue-1] = 1
+        colmap[col][bestValue-1] = 1
+        sqrmap[SquareRow*subsquare+SquareCol][bestValue-1] = 1
+
+        #success
+        if LCV_checking(initial_board, empty, visited, rowmap, colmap, sqrmap, index+1) == True:
+            return True
+        else:
+            #fail -> unmark the map
+            rowmap[row][bestValue-1] = 0
+            colmap[col][bestValue-1] = 0
+            sqrmap[SquareRow*subsquare+SquareCol][bestValue-1] = 0
+
+    visited[index] = 0
 
     return False
 
-
-def forward_check(initial_board, empty, rowmap, colmap, sqrmap, index):
+def forward_check(initial_board, empty, visited, rowmap, colmap, sqrmap, index, MRV = False, Degree = False,
+    LCV = False):
     """forward_check recursively searches the right value to fill the board
     and return True if a solution is found otherwise return False"""
 
-    if index == len(empty) - 1:
-        return True
+    BoardArray = initial_board.CurrentGameBoard
+    size = initial_board.BoardSize
+    subsquare = int(math.sqrt(initial_board.BoardSize))
 
-    currentCell = empty[index]
+    if MRV == True:
+        #compute the variable with the minimum remaining values
+        minValue = 1000
+        num_empty = 0
+
+        for i in range(len(empty)):
+            cell = empty[i]
+            tr = cell[0]
+            tc = cell[1]
+            if visited[i] == 0:
+                num_empty = num_empty + 1
+                Squaretr = tr // subsquare
+                Squaretc = tc // subsquare
+                temp = 0
+                for j in range(size):
+                    if rowmap[tr][j] == 0 and colmap[tc][j] == 0 and sqrmap[Squaretr*subsquare+Squaretc][j] == 0:
+                        temp = temp + 1
+                if temp < minValue:
+                    minValue = temp
+                    targetIndex = i
+    elif Degree == True:
+        #compute the variable invloved with the largest constraint on unassigned variables
+        maxValue = -1
+        num_empty = 0
+
+        for i in range(len(empty)):
+            cell = empty[i]
+            tr = cell[0]
+            tc = cell[1]
+            if visited[i] == 0:
+                num_empty = num_empty + 1
+                Squaretr = tr // subsquare
+                Squaretc = tc // subsquare
+                temp = 0
+                for j in range(size):
+                    if rowmap[tr][j] == 0:
+                        temp = temp + 1
+                    if colmap[tc][j] == 0:
+                        temp = temp + 1
+                    if sqrmap[Squaretr*subsquare+Squaretc][j] == 0:
+                        temp = temp + 1
+                if temp > maxValue:
+                    maxValue = temp
+                    targetIndex= i
+    else:
+        targetIndex = index
+
+    if MRV == False and Degree == False:
+        if index == len(empty):
+            return True
+    else:
+        if num_empty == 0:
+            return True
+
+    currentCell = empty[targetIndex]
     row = currentCell[0]
     col = currentCell[1]
-
-    subsquare = int(math.sqrt(initial_board.BoardSize))
     SquareRow = row // subsquare
     SquareCol = col // subsquare
 
+    visited[targetIndex] = 1
     for num in range(1,initial_board.BoardSize+1):
         #if num doesn't exit in its row, col nor square
         if rowmap[row][num-1] == 0 and colmap[col][num-1] == 0 and sqrmap[SquareRow*subsquare+SquareCol][num-1] == 0:
@@ -336,14 +422,14 @@ def forward_check(initial_board, empty, rowmap, colmap, sqrmap, index):
             sqrmap[SquareRow*subsquare+SquareCol][num-1] = 1
 
             #success
-            if forward_check(initial_board, empty, rowmap, colmap, sqrmap, index+1) == True:
+            if forward_check(initial_board, empty, visited, rowmap, colmap, sqrmap, index+1, MRV, Degree, LCV) == True:
                 return True
             else:
-                #fail -> unmark the map
-                #initial_board.set_value(row, col, 0)
                 rowmap[row][num-1] = 0
                 colmap[col][num-1] = 0
                 sqrmap[SquareRow*subsquare+SquareCol][num-1] = 0
+
+    visited[targetIndex] = 0
 
     return False
 
@@ -407,11 +493,13 @@ def solve(initial_board, forward_checking = False, MRV = False, Degree = False,
     visited = [0]*len(empty)
 
     if forward_checking == True:
-        forward_check(initial_board, empty, rowmap, colmap, sqrmap,0)
+        forward_check(initial_board, empty, visited, rowmap, colmap, sqrmap, 0, MRV, Degree, LCV)
     elif MRV == True:
-        MRV_checking(initial_board, empty, visited, rowmap, colmap, sqrmap)
+         MRV_checking(initial_board, empty, visited, rowmap, colmap, sqrmap)
     elif Degree == True:
-        degree_checking(initial_board, empty, visited, rowmap, colmap, sqrmap)
+         degree_checking(initial_board, empty, visited, rowmap, colmap, sqrmap)
+    elif LCV == True:
+        LCV_checking(initial_board, empty, visited, rowmap, colmap, sqrmap, 0)
     else:
         backtrack(initial_board, empty, 0)
 
@@ -427,7 +515,7 @@ if __name__ == '__main__':
     sb = init_board("input_puzzles/more/16x16/16x16.5.sudoku")
     sb1 = init_board("input_puzzles/more/25x25/25x25.2.sudoku")
     sb2 = init_board("input_puzzles/easy/25_25.sudoku")
-    sb3 = init_board("input_puzzles/easy/9_9.sudoku")
+    sb3 = init_board("input_puzzles/easy/25_25.sudoku")
     # fb = solve(sb,False,True,False,False)
     # if is_complete(fb) == True:
     #     print "YAY!"
@@ -438,8 +526,8 @@ if __name__ == '__main__':
     #fb2 = solve(sb2,False,True,False,False)
     #fb2 = solve(sb2,True)
     #if is_complete(fb2) == True:
-    #   print "YAY!"
-    fb3.print_board()
-    fb3 = solve(sb3, False,False,True,False)
+    # print "YAY!"
+    sb3.print_board()
+    fb3 = solve(sb3,True,False,True,False)
     if is_complete(fb3) == True:
-        print "YAY!"
+     print "YAY!"
