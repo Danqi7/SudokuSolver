@@ -495,9 +495,10 @@ def forward_check(initial_board, empty, visited, rowmap, colmap, sqrmap, index, 
 
     return False
 
-def backtrack(initial_board, empty, visited, rowmap, colmap, sqrmap, index, MRV, Degree, LCV):
+def backtrack(initial_board, empty, visited, rowmap, colmap, sqrmap, index, MRV = False, Degree = False, LCV = False):
     """Backtrack recursively searches the right value to fill the board
     and return True if a solution is found otherwise return False"""
+
     BoardArray = initial_board.CurrentGameBoard
     size = initial_board.BoardSize
     subsquare = int(math.sqrt(initial_board.BoardSize))
@@ -551,10 +552,16 @@ def backtrack(initial_board, empty, visited, rowmap, colmap, sqrmap, index, MRV,
 
     if MRV == False and Degree == False:
         if index == len(empty):
-            return True
+            if is_complete(initial_board) == True:
+                return True
+            else:
+                return False
     else:
         if num_empty == 0:
-            return True
+            if is_complete(initial_board) == True:
+                return True
+            else:
+                return False
 
     currentCell = empty[targetIndex]
     row = currentCell[0]
@@ -567,9 +574,16 @@ def backtrack(initial_board, empty, visited, rowmap, colmap, sqrmap, index, MRV,
         for num in range(1,initial_board.BoardSize+1):
             if is_valid(initial_board, row, col, num):
                 initial_board.set_value(row, col, num)
+                #mark the map
+                rowmap[row][num-1] = 1
+                colmap[col][num-1] = 1
+                sqrmap[SquareRow*subsquare+SquareCol][num-1] = 1
                 if backtrack(initial_board, empty, visited, rowmap, colmap, sqrmap, index+1, MRV, Degree, LCV) == True:
                     return True
                 else:
+                    rowmap[row][num-1] = 0
+                    colmap[col][num-1] = 0
+                    sqrmap[SquareRow*subsquare+SquareCol][num-1] = 0
                     initial_board.set_value(row, col, 0)
     elif LCV == True:
         used_value = [0]*size
@@ -585,44 +599,51 @@ def backtrack(initial_board, empty, visited, rowmap, colmap, sqrmap, index, MRV,
             temp_sum = 0
             bestValue = 1
             for num in range(1,initial_board.BoardSize+1):
-                if rowmap[row][num-1] == 0 and colmap[col][num-1] == 0 and sqrmap[SquareRow*subsquare+SquareCol][num-1] == 0:
-                    #haven't tried this value yet
-                    if used_value[num-1] == 0:
-                        #compute its impact on other unassigned
-                        for i in range(len(empty)):
-                            if visited[i] == 0:
-                                temprow = empty[i][0]
-                                tempcol = empty[i][1]
-                                temprowsub = temprow // subsquare
-                                tempcolsub = tempcol // subsquare
-                                if temprow == row:
-                                    if colmap[tempcol][num-1] == 0:
-                                        temp_sum = temp_sum + 1
-                                    if sqrmap[temprowsub*subsquare+tempcolsub][num-1] == 0:
-                                        temp_sum = temp_sum + 1
-                                if tempcol == col:
-                                    if rowmap[temprow][num-1] == 0:
-                                        temp_sum = temp_sum + 1
-                                    if sqrmap[temprowsub*subsquare+tempcolsub][num-1] == 0:
-                                        temp_sum = temp_sum + 1
-                                if temprowsub*subsquare+tempcolsub == SquareRow*subsquare+SquareCol:
-                                    if colmap[tempcol][num-1] == 0:
-                                        temp_sum = temp_sum + 1
-                                    if rowmap[temprow][num-1] == 0:
-                                        temp_sum = temp_sum + 1
-                        if temp_sum < minSum:
-                            minSum = temp_sum
-                            bestValue = num
+                #haven't tried this value yet
+                if used_value[num-1] == 0:
+                    #compute its impact on other unassigned
+                    for i in range(len(empty)):
+                        if visited[i] == 0:
+                            temprow = empty[i][0]
+                            tempcol = empty[i][1]
+                            temprowsub = temprow // subsquare
+                            tempcolsub = tempcol // subsquare
+                            if temprow == row:
+                                if colmap[tempcol][num-1] == 0:
+                                    temp_sum = temp_sum + 1
+                                if sqrmap[temprowsub*subsquare+tempcolsub][num-1] == 0:
+                                    temp_sum = temp_sum + 1
+                            if tempcol == col:
+                                if rowmap[temprow][num-1] == 0:
+                                    temp_sum = temp_sum + 1
+                                if sqrmap[temprowsub*subsquare+tempcolsub][num-1] == 0:
+                                    temp_sum = temp_sum + 1
+                            if temprowsub*subsquare+tempcolsub == SquareRow*subsquare+SquareCol:
+                                if colmap[tempcol][num-1] == 0:
+                                    temp_sum = temp_sum + 1
+                                if rowmap[temprow][num-1] == 0:
+                                    temp_sum = temp_sum + 1
+                    if temp_sum < minSum:
+                        minSum = temp_sum
+                        bestValue = num
             #first try the best value
             initial_board.set_value(row, col, bestValue)
             used_value[bestValue-1] = 1
+            rowmap[row][bestValue-1] = 1
+            colmap[col][bestValue-1] = 1
+            sqrmap[SquareRow*subsquare+SquareCol][bestValue-1] = 1
+
 
             #success
             if backtrack(initial_board, empty,visited, rowmap, colmap, sqrmap, index+1, MRV, Degree, LCV) == True:
                 return True
             else:
+                rowmap[row][bestValue-1] = 0
+                colmap[col][bestValue-1] = 0
+                sqrmap[SquareRow*subsquare+SquareCol][bestValue-1] = 0
                 initial_board.set_value(row, col, 0)
 
+    visited[targetIndex] = 0
 
     return False
 
@@ -689,7 +710,7 @@ def solve(initial_board, forward_checking = False, MRV = False, Degree = False,
 if __name__ == '__main__':
     sb = init_board("input_puzzles/more/16x16/16x16.5.sudoku")
     sb1 = init_board("input_puzzles/more/25x25/25x25.2.sudoku")
-    sb2 = init_board("input_puzzles/easy/9_9.sudoku")
+    sb2 = init_board("input_puzzles/easy/25_25.sudoku")
     sb3 = init_board("input_puzzles/easy/16_16.sudoku")
     # fb = solve(sb,False,True,False,False)
     # if is_complete(fb) == True:
@@ -699,11 +720,11 @@ if __name__ == '__main__':
     #    print "YAY AGAIN!"
     #sb2.print_board()
     #fb2 = solve(sb2,False,True,False,False)
-    # fb2 = solve(sb2,False,True,False,False)
-    # if is_complete(fb2) == True:
-    #     print "YAY!"
+    fb2 = solve(sb2,False,True,False,False)
+    if is_complete(fb2) == True:
+        print "YAY!"
     #sb3.print_board()
     #sfb3 = solve(sb3,True,False,True,False)
-    fb3 = solve(sb3,True,False,False,True)
-    if is_complete(fb3) == True:
-     print "YAY!"
+    # fb3 = solve(sb3,True,False,False,True)
+    # if is_complete(fb3) == True:
+    #  print "YAY!"
