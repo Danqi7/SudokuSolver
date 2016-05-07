@@ -346,6 +346,8 @@ def forward_check(initial_board, empty, visited, rowmap, colmap, sqrmap, index, 
     LCV = False):
     """forward_check recursively searches the right value to fill the board
     and return True if a solution is found otherwise return False"""
+    global checks
+    checks = checks + 1
 
     BoardArray = initial_board.CurrentGameBoard
     size = initial_board.BoardSize
@@ -498,6 +500,8 @@ def forward_check(initial_board, empty, visited, rowmap, colmap, sqrmap, index, 
 def backtrack(initial_board, empty, visited, rowmap, colmap, sqrmap, index, MRV = False, Degree = False, LCV = False):
     """Backtrack recursively searches the right value to fill the board
     and return True if a solution is found otherwise return False"""
+    global checks
+    checks = checks + 1
 
     BoardArray = initial_board.CurrentGameBoard
     size = initial_board.BoardSize
@@ -647,6 +651,7 @@ def backtrack(initial_board, empty, visited, rowmap, colmap, sqrmap, index, MRV 
 
     return False
 
+checks = 0
 
 def solve(initial_board, forward_checking = False, MRV = False, Degree = False,
     LCV = False):
@@ -688,6 +693,7 @@ def solve(initial_board, forward_checking = False, MRV = False, Degree = False,
     start_time = time.time()
     visited = [0]*len(empty)
 
+
     if forward_checking == True:
         forward_check(initial_board, empty, visited, rowmap, colmap, sqrmap, 0, MRV, Degree, LCV)
     # elif MRV == True:
@@ -702,6 +708,8 @@ def solve(initial_board, forward_checking = False, MRV = False, Degree = False,
     elapsed_time = time.time() - start_time;
     print "The time used: "
     print elapsed_time
+    print "The number of checks is: "
+    print checks
     initial_board.print_board()
     return initial_board
 
@@ -720,7 +728,7 @@ if __name__ == '__main__':
     #    print "YAY AGAIN!"
     #sb2.print_board()
     #fb2 = solve(sb2,False,True,False,False)
-    fb2 = solve(sb2,False,True,False,False)
+    fb2 = solve(sb2,False,False,False,False)
     if is_complete(fb2) == True:
         print "YAY!"
     #sb3.print_board()
